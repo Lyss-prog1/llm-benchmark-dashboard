@@ -1,0 +1,17 @@
+# never commit these
+.env
+*.env
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# W&B local run data
+wandb/
+
+# OS (system file on macOS sometimes)
+.DS_Store
