@@ -1,0 +1,60 @@
+"""
+run_benchmark.py
+
+Entry point of the LLM Benchmark Dashboard. Loads API credentials from .env,
+sends the same fixed set of prompts to Mistral, Gemini, and Hugging Face via
+the functions defined in providers.py, and writes the raw results (latency,
+response text, errors) to a timestamped JSON file under results/.
+
+This is the "test harness" of the project: it does not judge response
+quality or track experiments yet (that comes with Weights & Biases in the
+next step) : its only job here is to run every provider under the same
+conditions and record what happened, reliably.
+"""
+
+import json
+import os
+from datetime import datetime, timezone
+
+from dotenv import load_dotenv
+from mistralai.client import Mistral
+from google import genai
+from huggingface_hub import InferenceClient
+
+from providers import call_mistral, call_gemini, call_hf #functions defined in providers.py 
+
+load_dotenv()
+
+mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
+gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
+hf_client = InferenceClient(token=os.environ["HF_API_TOKEN"])
+
+PROMPTS = [
+    "What is the capital of France?",
+    "Explain what an API is in one sentence.",
+    "Reply with exactly one word: hello",
+]
+
+def run():
+    results = []
+    for prompt in PROMPTS:
+        print(f"Prompt: {prompt}")
+        for call_fn, client in [
+            (call_mistral, mistral_client),
+            (call_gemini, gemini_client),
+            (call_hf, hf_client),
+        ]:
+            result = call_fn(prompt, client)
+            print(f"  {result['provider']}: {result['latency_seconds']:.2f}s "
+                  f"{'OK' if result['error'] is None else 'ERROR: ' + result['error']}")
+            results.append(result)
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    output_path = f"results/run_{timestamp}.json" #new file created for each execution of the benchmark
+    with open(output_path, "w") as f:
+        json.dump(results, f, indent=2)
+    print(f"\nSaved {len(results)} results to {output_path}")
+
+
+if __name__ == "__main__":
+    run()
