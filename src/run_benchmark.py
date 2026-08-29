@@ -14,14 +14,14 @@ conditions and record what happened, reliably.
 import weave
 import json
 import os
-from datetime import datetime, timezone
 
+from datetime import datetime, timezone
 from dotenv import load_dotenv
 from mistralai.client import Mistral
 from google import genai
 from huggingface_hub import InferenceClient
-
 from providers import call_mistral, call_gemini, call_hf #functions defined in providers.py 
+from prompts import PROMPTS
 
 load_dotenv()
 
@@ -31,22 +31,19 @@ mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
 gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 hf_client = InferenceClient(token=os.environ["HF_API_TOKEN"])
 
-PROMPTS = [
-    "What is the capital of France?",
-    "Explain what an API is in one sentence.",
-    "Reply with exactly one word: hello",
-]
-
 def run():
     results = []
-    for prompt in PROMPTS:
-        print(f"Prompt: {prompt}")
+    for prompt_entry in PROMPTS:
+        prompt_text = prompt_entry["prompt"]
+        use_case = prompt_entry["use_case"]
+        print(f"[{use_case}] Prompt: {prompt_text[:60]}...")
         for call_fn, client in [
-            (call_mistral, mistral_client),
-            (call_gemini, gemini_client),
-            (call_hf, hf_client),
+                (call_mistral, mistral_client),
+                (call_gemini, gemini_client),
+                (call_hf, hf_client),
         ]:
-            result = call_fn(prompt, client)
+            result = call_fn(prompt_text, client)
+            result["use_case"] = use_case
             print(f"  {result['provider']}: {result['latency_seconds']:.2f}s "
                   f"{'OK' if result['error'] is None else 'ERROR: ' + result['error']}")
             results.append(result)

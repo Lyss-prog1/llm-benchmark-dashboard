@@ -8,6 +8,7 @@ error) regardless of how that provider's SDK actually structures its
 request/response : this is what lets run_benchmark.py treat all three
 providers interchangeably in one loop instead of branching per provider.
 """
+
 import weave
 import time
 from mistralai.client import Mistral
@@ -39,18 +40,25 @@ def call_mistral(prompt: str, client: Mistral) -> dict:
     }
 
 @weave.op
-def call_gemini(prompt: str, client: genai.Client) -> dict:
+def call_gemini(prompt: str, client: genai.Client, max_retries: int = 2) -> dict:
     start = time.perf_counter()
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.6-flash",
-            contents=prompt,
-        )
-        text = response.text
-        error = None
-    except Exception as e:
-        text = None
-        error = str(e)
+    text = None
+    error = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt,
+            )
+            text = response.text
+            error = None
+            break
+        except Exception as e:
+            error = str(e)
+            if attempt < max_retries:
+                time.sleep(2 ** attempt)  # backoff : 1s, puis 2s
+
     latency = time.perf_counter() - start
 
     return {
@@ -60,6 +68,7 @@ def call_gemini(prompt: str, client: genai.Client) -> dict:
         "latency_seconds": latency,
         "error": error,
     }
+
 
 @weave.op
 def call_hf(prompt: str, client: InferenceClient) -> dict:
