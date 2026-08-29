@@ -15,6 +15,7 @@ import weave
 import json
 import os
 
+from provider_metadata import PROVIDER_METADATA
 from datetime import datetime, timezone
 from dotenv import load_dotenv
 from mistralai.client import Mistral
@@ -31,6 +32,16 @@ mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
 gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 hf_client = InferenceClient(token=os.environ["HF_API_TOKEN"])
 
+@weave.op
+def run_single_call(call_fn, client, prompt_text: str, use_case: str) -> dict:
+    result = call_fn(prompt_text, client)
+    result["use_case"] = use_case
+    meta = PROVIDER_METADATA[result["provider"]]
+    result["confidentiality"] = meta["confidentiality"]
+    result["confidentiality_note"] = meta["confidentiality_note"]
+    return result
+
+
 def run():
     results = []
     for prompt_entry in PROMPTS:
@@ -42,8 +53,7 @@ def run():
                 (call_gemini, gemini_client),
                 (call_hf, hf_client),
         ]:
-            result = call_fn(prompt_text, client)
-            result["use_case"] = use_case
+            result = run_single_call(call_fn, client, prompt_text, use_case)            
             print(f"  {result['provider']}: {result['latency_seconds']:.2f}s "
                   f"{'OK' if result['error'] is None else 'ERROR: ' + result['error']}")
             results.append(result)
