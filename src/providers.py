@@ -8,13 +8,13 @@ error) regardless of how that provider's SDK actually structures its
 request/response : this is what lets run_benchmark.py treat all three
 providers interchangeably in one loop instead of branching per provider.
 """
-
+import weave
 import time
 from mistralai.client import Mistral
 from google import genai
 from huggingface_hub import InferenceClient
 
-
+@weave.op
 def call_mistral(prompt: str, client: Mistral) -> dict:
     start = time.perf_counter()
     try:
@@ -38,6 +38,7 @@ def call_mistral(prompt: str, client: Mistral) -> dict:
         "error": error,
     }
 
+@weave.op
 def call_gemini(prompt: str, client: genai.Client) -> dict:
     start = time.perf_counter()
     try:
@@ -60,7 +61,7 @@ def call_gemini(prompt: str, client: genai.Client) -> dict:
         "error": error,
     }
 
-
+@weave.op
 def call_hf(prompt: str, client: InferenceClient) -> dict:
     start = time.perf_counter()
     try:

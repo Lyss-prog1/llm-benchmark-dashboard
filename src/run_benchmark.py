@@ -11,7 +11,7 @@ quality or track experiments yet (that comes with Weights & Biases in the
 next step) : its only job here is to run every provider under the same
 conditions and record what happened, reliably.
 """
-
+import weave
 import json
 import os
 from datetime import datetime, timezone
@@ -24,6 +24,8 @@ from huggingface_hub import InferenceClient
 from providers import call_mistral, call_gemini, call_hf #functions defined in providers.py 
 
 load_dotenv()
+
+weave.init("macubuntu-admin-mac/llm-benchmark-dashboard")
 
 mistral_client = Mistral(api_key=os.environ["MISTRAL_API_KEY"])
 gemini_client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
