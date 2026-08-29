@@ -13,9 +13,34 @@ In progress : provider connectivity validated, unified benchmark harness next.
 
 - [x] Security foundation (secret scanning, pre-commit hooks, no-billing-risk setup)
 - [x] Individual API connectivity tests (Mistral, Gemini, Hugging Face)
-- [ ] Unified test harness (single script, all providers, same prompts)
-- [ ] Metrics logging to Weights & Biases
+- [x] Unified test harness with enterprise-relevant prompts (sales, financial
+      due diligence, HR onboarding)
+- [x] Weave integration: automatic tracing, cost tracking, per-provider retry
+      with exponential backoff (Gemini)
+- [x] Confidentiality metadata per provider (see `docs/security-notes.md`)
+- [ ] Quality axis: LLM-as-judge evaluation via `weave.Evaluation`
+- [ ] Shareable W&B report
 - [ ] Streamlit dashboard
+
+## The four benchmark axes
+
+| Axis | Status | How it's captured |
+|---|---|---|
+| Latency | Measured end-to-end per call, including retries |
+| Cost | Automatic, via Weave's built-in token-based pricing |
+| Confidentiality | Static per-provider metadata (`src/provider_metadata.py`) |
+| Quality | Planned: LLM-as-judge scoring via Weave Evaluations |
+
+
+## Observability: Weave, not classic W&B "Models"
+
+This project uses [Weave](https://weave-docs.wandb.ai/), the Weights & Biases
+product built for LLM-application observability, rather than the classic
+"Models" experiment-tracking product. The reasoning: this project evaluates
+calls to already-trained models rather than training a model from scratch —
+Weave is designed for exactly that, capturing prompt/response/latency/cost
+per call automatically via the `@weave.op` decorator, and will later support
+structured quality evaluation.
 
 ## Cost safety policy
 
@@ -58,11 +83,27 @@ cp .env.example .env
 pre-commit install
 ```
 
+## Running the benchmark
+
+```bash
+python3 src/run_benchmark.py
+```
+
+Runs every prompt in `src/prompts.py` against all three providers, prints a
+summary per call, saves raw results to `results/` (gitignored), and streams
+traces to Weave (a project link is printed on first run).
+
 ## Repository structure
 
 ```
-src/            application code
-.env.example    template for required environment variables (no real values)
-requirements.txt   pinned Python dependencies
+src/
+  providers.py           per-provider API call wrappers (call_mistral, call_gemini, call_hf)
+  provider_metadata.py   static confidentiality metadata per provider
+  prompts.py             fixed enterprise-use-case prompts (sales, finance, HR)
+  run_benchmark.py       entry point: runs all prompts x all providers, logs to Weave
+docs/
+  security-notes.md      threat model, defense in depth, known limitations
+.env.example              template for required environment variables (no real values)
+requirements.txt          pinned Python dependencies
 .pre-commit-config.yaml   gitleaks hook configuration
 ```
